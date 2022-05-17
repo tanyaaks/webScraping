@@ -19,6 +19,16 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
                           options=options)
 
 
+def error_decorator(func):
+    def get_error(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"{func.__name__} provided an error {e}")
+            return kwargs.get('default_res')
+    return get_error
+
+
 class Event:
     def __init__(self, page_html):
         self.doc = BeautifulSoup(page_html, features="html.parser")
@@ -40,32 +50,22 @@ class Event:
                 self.event_prices_list.extend(self.get_event_prices_list(ind))
                 self.event_tags_list.extend(self.get_event_tags_list(ind))
 
-    def get_event_name(self):
-        try:
-            event_name = self.doc.find(['div'], class_='event-page__header').h1.text.strip()
-        except Exception as e:
-            print(f"get_event_name {e}")
-            event_name = ''
-        return event_name
+    @error_decorator
+    def get_event_name(self, default_res=''):
+        return self.doc.find(['div'], class_='event-page__header').h1.text.strip()
 
-    def get_event_pic(self):
-        try:
-            event_pic = self.doc.find(['picture'], class_='poster').img['src']
-        except Exception as e:
-            print(f"get_event_pic {e}")
-            event_pic = ''
-        return event_pic
+    @error_decorator
+    def get_event_pic(self, default_res=''):
+        return self.doc.find(['picture'], class_='poster').img['src']
 
-    def get_event_desc_line(self):
-        try:
-            datetime_data = self.doc.find_all(['div'], class_='table-about__text')
-            line = ''
-            for el in datetime_data:
+    @error_decorator
+    def get_event_desc_line(self, default_res=''):
+        datetime_data = self.doc.find_all(['div'], class_='table-about__text')
+        line = ''
+        for el in datetime_data:
+            if el:
                 line += el.text + ", "
-        except Exception as e:
-            print(f"get_event_desc_line {e}")
-            line = ''
-        return line
+        return line[:-2]
 
     def get_event_desc(self):
         try:
@@ -79,37 +79,24 @@ class Event:
                 event_desc = ''
         return event_desc
 
-    def get_number_in_schedule(self):
-        cnt = 0
-        try:
-            tmp = self.doc.find_all(['div'], class_='date-content')
-            for _ in tmp:
-                cnt += 1
-        except Exception as e:
-            print(f"get_number_in_schedule {e}")
-        return cnt
+    @error_decorator
+    def get_number_in_schedule(self, default_res=0):
+        tmp = self.doc.find_all(['div'], class_='date-content')
+        return len(tmp)
 
-    def get_schedule_table(self, checkbox_ind):
-        try:
-            checkbox_xpath = f'/html/body/div/div/center/section/main/div/section/div/div[2]/div/div[2]/section[1]/div[2]/div[2]/div/div[{checkbox_ind}]'
-            element = driver.find_element(by=By.XPATH, value=checkbox_xpath)
-            driver.execute_script("arguments[0].click();", element)
-            driver.find_element(by=By.XPATH, value=checkbox_xpath).click()
-            time.sleep(random.randrange(40, 55))
-            doc = BeautifulSoup(driver.page_source, "html.parser")
-            res = doc.find_all(class_='tickets__table')
-        except Exception as e:
-            print(f"get_schedule_table {e}")
-            res = pd.DataFrame()
-        return res
+    @error_decorator
+    def get_schedule_table(self, checkbox_ind, default_res=pd.DataFrame()):
+        checkbox_xpath = f'/html/body/div/div/center/section/main/div/section/div/div[2]/div/div[2]/section[1]/div[2]/div[2]/div/div[{checkbox_ind}]'
+        element = driver.find_element(by=By.XPATH, value=checkbox_xpath)
+        driver.execute_script("arguments[0].click();", element)
+        driver.find_element(by=By.XPATH, value=checkbox_xpath).click()
+        time.sleep(random.randrange(40, 55))
+        doc = BeautifulSoup(driver.page_source, "html.parser")
+        return doc.find_all(class_='tickets__table')
 
-    def get_tickets_header_list(self, ind):
-        try:
-            res = self.schedule_table[ind].find_all(class_='tickets__table_header')
-        except Exception as e:
-            print(f"get_tickets_header_list {e}")
-            res = pd.DataFrame()
-        return res
+    @error_decorator
+    def get_tickets_header_list(self, ind, default_res=pd.DataFrame()):
+        return self.schedule_table[ind].find_all(class_='tickets__table_header')
 
     def get_event_places_list(self, ind):
         pl = []
@@ -245,8 +232,8 @@ def main():
         for link in links:
             print(link)
             cnt += 1
-            time.sleep(random.randrange(50, 65))
             driver.get(link)
+            time.sleep(random.randrange(50, 65))
             event = Event(driver.page_source)
             res_df = res_df.append(collect_event_data(event))
             if cnt % 50 == 0:

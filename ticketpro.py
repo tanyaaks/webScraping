@@ -18,6 +18,16 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
                           options=options)
 
 
+def error_decorator(func):
+    def get_error(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"{func.__name__} provided an error {e}")
+            return kwargs.get('default_res')
+    return get_error
+
+
 class Event:
     def __init__(self, page_html):
         self.doc = BeautifulSoup(page_html, features="html.parser")
@@ -45,129 +55,76 @@ class Event:
             self.price_list.extend(self.get_price_list())
             self.purchase_link_list.extend(self.get_purchase_link_list())
 
-    def get_event_name(self):
-        try:
-            res = self.doc.find('div', attrs={'class': 'title'}).text.strip()
-        except Exception as e:
-            print(f"get_event_name {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_name(self, default_res=''):
+        return self.doc.find('div', attrs={'class': 'title'}).text.strip()
 
-    def get_event_pic(self):
-        try:
-            res = f"https://www.ticketpro.by{self.doc.find(['div'], attrs={'class': 'content-poster'}).img['src']}"
-        except Exception as e:
-            print(f"get_event_pic {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_pic(self, default_res=''):
+        return f"https://www.ticketpro.by{self.doc.find(['div'], attrs={'class': 'content-poster'}).img['src']}"
 
-    def get_content_panel(self):
-        try:
-            res = self.doc.find_all(['span'], attrs={'class': 'content__panel-title'})
-        except Exception as e:
-            print(f"get_content_panel {e}")
-            res = []
-        return res
+    @error_decorator
+    def get_content_panel(self, default_res=[]):
+        return self.doc.find_all(['span'], attrs={'class': 'content__panel-title'})
 
-    def get_event_datetime(self):
-        try:
-            res = self.content_panel[0].text.strip()
-        except Exception as e:
-            print(f"get_event_datetime {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_datetime(self, default_res=''):
+        return self.content_panel[0].text.strip()
 
-    def get_event_place(self):
-        try:
-            res = self.content_panel[1].a.text.strip()
-        except Exception as e:
-            print(f"get_event_place {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_place(self, default_res=''):
+        return self.content_panel[1].a.text.strip()
 
-    def get_event_price(self):
-        try:
-            res = self.content_panel[2].text.strip()
-        except Exception as e:
-            print(f"get_event_price {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_price(self, default_res=''):
+        return self.content_panel[2].text.strip()
 
-    def if_long_schedule(self):
-        fl = False
-        try:
-            if len(self.doc.find_all(text='Расписание мероприятий')) != 0:
-                fl = True
-        except Exception as e:
-            print(f"if_long_schedule {e}")
-        return fl
+    @error_decorator
+    def if_long_schedule(self, default_res=False):
+        if self.doc.find_all(text='Расписание мероприятий'):
+            return True
 
-    def get_event_purchase_link(self):
-        try:
-            res = f"https://www.ticketpro.by{self.doc.find(['a'], attrs={'class': 'btn btn-lg'})['href']}"
-        except Exception as e:
-            print(f"get_event_purchase_link {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_purchase_link(self, default_res=''):
+        return f"https://www.ticketpro.by{self.doc.find(['a'], attrs={'class': 'btn btn-lg'})['href']}"
 
-    def get_event_desc(self):
-        try:
-            res = self.doc.find(['div'], attrs={'class': 'content__text'}).text.strip()
-        except Exception as e:
-            print(f"get_event_desc {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_desc(self, default_res=''):
+        return self.doc.find(['div'], attrs={'class': 'content__text'}).text.strip()
 
-    def get_event_location(self):
-        try:
-            res = self.doc.find_all(['div'], attrs={'class': 'sidebar-box__text'})[0].text.strip().split('\n')
-            res = ", ".join([el for el in res if el != ''])
-        except Exception as e:
-            print(f"get_event_location {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_location(self, default_res=''):
+        res = self.doc.find_all(['div'], attrs={'class': 'sidebar-box__text'})[0].text.strip().split('\n')
+        return ", ".join([el for el in res if el != ''])
 
-    def get_event_long(self):
-        try:
-            res = self.doc.find_all(['div'], attrs={'class': 'map'})[0]['data-lan']
-        except Exception as e:
-            print(f"get_event_long {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_long(self, default_res=''):
+        return self.doc.find_all(['div'], attrs={'class': 'map'})[0]['data-lan']
 
-    def get_event_lat(self):
-        try:
-            res = self.doc.find_all(['div'], attrs={'class': 'map'})[0]['data-lat']
-        except Exception as e:
-            print(f"get_event_lat {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_lat(self, default_res=''):
+        return self.doc.find_all(['div'], attrs={'class': 'map'})[0]['data-lat']
 
-    def get_schedule_data(self):
+    @error_decorator
+    def get_schedule_data(self, default_res=([], [], [], [])):
         datetime_l = []
         ev_name_l = []
         price_l = []
         purch_l = []
-        try:
-            div = self.doc.find_all('div', attrs={'class': 'event-group__box'})
-            for el in div:
-                ev_name_l.append(el.find(['div'],
-                                         class_='event-group__box-col event-group__box-name').text.strip())
-                datetime_l.append(
-                    el.find(['div'], attrs={
-                        'class': 'event-group__box-col event-group__box-date'}).text.strip().replace(
-                        "\n", ", "))
-                price_l.append(el.find(['div'],
-                                       class_='event-group__box-col event-group__box-price').text.strip())
-                purch_l.append(
+        div = self.doc.find_all('div', attrs={'class': 'event-group__box'})
+        for el in div:
+            ev_name_l.append(el.find(['div'], class_='event-group__box-col event-group__box-name').text.strip())
+            datetime_l.append(el.find(['div'], attrs={
+                'class': 'event-group__box-col event-group__box-date'}).text.strip().replace(
+                "\n", ", "))
+            price_l.append(el.find(['div'],class_='event-group__box-col event-group__box-price').text.strip())
+            purch_l.append(
                     f"https://www.ticketpro.by{el.find(['div'], class_='event-group__box-col event-group__box-action').a['href']}")
-            datetime_l_chb, ev_name_l_chb, price_l_chb, purch_l_chb = self.get_checkbox_data()
-            datetime_l.extend(datetime_l_chb)
-            ev_name_l.extend(ev_name_l_chb)
-            price_l.extend(price_l_chb)
-            purch_l.extend(purch_l_chb)
-        except Exception as e:
-            print(f"get_schedule_data {e}")
+        datetime_l_chb, ev_name_l_chb, price_l_chb, purch_l_chb = self.get_checkbox_data()
+        datetime_l.extend(datetime_l_chb)
+        ev_name_l.extend(ev_name_l_chb)
+        price_l.extend(price_l_chb)
+        purch_l.extend(purch_l_chb)
         return datetime_l, ev_name_l, price_l, purch_l
 
     def get_checkbox_data(self):
@@ -201,37 +158,21 @@ class Event:
                 break
         return datetime_l, ev_name_l, price_l, purch_l
 
-    def get_datetime_list(self):
-        try:
-            res = self.schedule_data[0]
-        except Exception as e:
-            print(f"get_datetime_list {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_datetime_list(self, default_res=''):
+        return self.schedule_data[0]
 
-    def get_event_name_list(self):
-        try:
-            res = self.schedule_data[1]
-        except Exception as e:
-            print(f"get_event_name_list {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_event_name_list(self, default_res=''):
+        return self.schedule_data[1]
 
-    def get_price_list(self):
-        try:
-            res = self.schedule_data[2]
-        except Exception as e:
-            print(f"get_price_list {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_price_list(self, default_res=''):
+        return self.schedule_data[2]
 
-    def get_purchase_link_list(self):
-        try:
-            res = self.schedule_data[3]
-        except Exception as e:
-            print(f"get_purchase_link_list {e}")
-            res = ''
-        return res
+    @error_decorator
+    def get_purchase_link_list(self, default_res=''):
+        return self.schedule_data[3]
 
 
 def get_main_links(url):
@@ -318,7 +259,7 @@ def main():
         event_links = get_event_group_links(main_links)
         for el in event_links:
             url_event = f"https://www.ticketpro.by{el.a['href']}"
-            print(url_event)
+            print(f"Event #{events_count}, event url - {url_event}")
             time.sleep(random.randrange(50, 70))
             driver.get(url_event)
             event = Event(driver.page_source)
