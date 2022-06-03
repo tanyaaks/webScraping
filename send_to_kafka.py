@@ -56,6 +56,6 @@ def main(src_name):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--src', type=str, default='https://bycard.by/')
+    parser.add_argument('--src', type=str, default='bycard')
     opt = parser.parse_known_args()[0]
     main(opt.src)
