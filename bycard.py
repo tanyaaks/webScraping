@@ -14,10 +14,8 @@ options = webdriver.ChromeOptions()
 options.add_argument(f"user_agent={useragent.random}")
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--headless")
-
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
                           options=options)
-
 
 def error_decorator(func):
     def get_error(*args, **kwargs):
@@ -84,15 +82,20 @@ class Event:
         tmp = self.doc.find_all(['div'], class_='date-content')
         return len(tmp)
 
-    @error_decorator
+    # @error_decorator
     def get_schedule_table(self, checkbox_ind, default_res=pd.DataFrame()):
-        checkbox_xpath = f'/html/body/div/div/center/section/main/div/section/div/div[2]/div/div[2]/section[1]/div[2]/div[2]/div/div[{checkbox_ind}]'
-        element = driver.find_element(by=By.XPATH, value=checkbox_xpath)
-        driver.execute_script("arguments[0].click();", element)
-        driver.find_element(by=By.XPATH, value=checkbox_xpath).click()
-        time.sleep(random.randrange(40, 55))
-        doc = BeautifulSoup(driver.page_source, "html.parser")
-        return doc.find_all(class_='tickets__table')
+        try:
+            checkbox_xpath = f'/html/body/div/div/center/section/main/div/section/div/div[2]/div/div[2]/section[1]/div[2]/div[2]/div/div[{checkbox_ind}]'
+            element = driver.find_element(by=By.XPATH, value=checkbox_xpath)
+            driver.execute_script("arguments[0].click();", element)
+            driver.find_element(by=By.XPATH, value=checkbox_xpath).click()
+            time.sleep(random.randrange(40, 55))
+            doc = BeautifulSoup(driver.page_source, "html.parser")
+            res = doc.find_all(class_='tickets__table')
+        except Exception as e:
+            print(f"get_schedule_table error - {e}")
+            res = pd.DataFrame()
+        return res
 
     @error_decorator
     def get_tickets_header_list(self, ind, default_res=pd.DataFrame()):
@@ -107,7 +110,7 @@ class Event:
                 pl.extend([pl_new] * len(schedule))
             except Exception as e:
                 print(f"get_event_places_list {e}")
-                pl_new = ''
+                pl_new = '-'
                 pl.extend([pl_new])
         return pl
 
@@ -123,6 +126,7 @@ class Event:
                         print(f"get_event_dates_list1 {e}")
                         res.append('')
             except Exception as e:
+                res = [''] * len(self.tickets_header)
                 print(f"get_event_dates_list2 {e}")
         return res
 
@@ -138,6 +142,7 @@ class Event:
                         print(f"get_event_prices_list1 {e}")
                         res.append('')
             except Exception as e:
+                res = [''] * len(self.tickets_header)
                 print(f"get_event_prices_list2 {e}")
         return res
 
@@ -153,7 +158,8 @@ class Event:
                         print(f"get_event_tags_list1 {e}")
                         res.append('')
             except Exception as e:
-                print(f"get_event_tags_list2 {e}")
+                res = ['']*len(self.tickets_header)
+                print(f"get_event_tags_list {e}")
         return res
 
 
@@ -185,7 +191,7 @@ def scroll_page_to_update_html():
 
 def get_all_events_links(url, main_links):
     links = []
-    for m_link in main_links[::-1]:
+    for m_link in main_links[:2]: #main_links[::-1]:
         time.sleep(random.randrange(35, 45))
         driver.get(m_link)
         doc_group_event = scroll_page_to_update_html()
@@ -196,55 +202,51 @@ def get_all_events_links(url, main_links):
 
 
 def collect_event_data(event):
-    ln = 1
-    if len(event.event_dts_list) > 0:
-        ln = len(event.event_dts_list)
-    res = pd.DataFrame({
-        'event_name': [event.event_name] * ln,
-        'event_pic': [event.event_pic] * ln,
-        'desc_line': [event.event_desc_line] * ln,
-        'event_desc': [event.event_desc] * ln,
-        'event_place': event.event_places_list,
-        'event_dt': event.event_dts_list,
-        'event_price': event.event_prices_list,
-        'event_tag': event.event_tags_list
-    })
+    res = []
+    if not event.event_dts_list:
+        return None
+    for i in range(len(event.event_places_list)):
+        res.append(
+            {
+                "name": event.event_name,
+                "event_pic": event.event_pic,
+                "desc_line": event.event_desc_line,
+                "event_desc": event.event_desc,
+                "event_place": event.event_places_list[i],
+                "event_price": event.event_prices_list[i],
+                "event_tag": event.event_tags_list[i],
+                "event_dt": event.event_dts_list[i]
+            }
+        )
     return res
 
 
-def main():
-    res_df = pd.DataFrame({
-        'event_name': [],
-        'event_pic': [],
-        'desc_line': [],
-        'event_desc': [],
-        'event_place': [],
-        'event_dt': [],
-        'event_price': [],
-        'event_tag': []
-    })
-
-    url_main = 'https://bycard.by/'
-    cnt = 0
+def get_all_links_for_parsing(url='https://bycard.by/'):
+    links = []
+    url_main = url
+    print(url)
     try:
         main_links = get_main_links(url_main)
+        print("Main links collected")
         links = get_all_events_links(url_main, main_links)
-        for link in links:
-            print(link)
-            cnt += 1
-            driver.get(link)
-            time.sleep(random.randrange(50, 65))
-            event = Event(driver.page_source)
-            res_df = res_df.append(collect_event_data(event))
-            if cnt % 50 == 0:
-                res_df.to_csv(f"output/bycard/bycard_data_{cnt}.csv")
+        print(links)
     except Exception as e:
         print(e)
-    finally:
-        res_df.to_csv(f"output/bycard/bycard_data_fin.csv")
-        driver.close()
-        driver.quit()
+    return links
 
 
-if __name__ == '__main__':
-    main()
+def parse_event_by_link(link):
+    driver.get(link)
+    time.sleep(random.randrange(50, 65))
+    event = Event(driver.page_source)
+    res = collect_event_data(event)
+    return res
+
+
+def close_driver():
+    driver.close()
+    driver.quit()
+
+
+# if __name__ == '__main__':
+#     main()

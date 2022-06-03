@@ -202,6 +202,7 @@ def get_event_links(url_event_group, pages):
 def get_event_group_links(main_links):
     event_list = []
     for url_event_group in main_links:
+        print(url_event_group)
         time.sleep(random.randrange(40, 60))
         driver.get(url_event_group)
         doc_event_group = BeautifulSoup(driver.page_source, features="html.parser")
@@ -209,14 +210,15 @@ def get_event_group_links(main_links):
             div = doc_event_group.find(class_='pagination text-center')
             pages = div.find(['a'], attrs={'class': 'page-last'})['data-page']
         except Exception as e:
-            print(f"get_event_group_links {e}")
+            print(f"get_event_group_links {e}, seems it's only 1 page of events here")
             pages = 0
         finally:
             event_list.extend(get_event_links(url_event_group, pages))
-    return set(event_list)
+    return list(set(event_list))
 
 
 def collect_event_data(event):
+    res = []
     if event.long_schedule:
         ln = len(event.datetime_list)
         event_name = event.event_name_list
@@ -229,51 +231,48 @@ def collect_event_data(event):
         event_datetime = [event.event_datetime]
         event_price = [event.event_price]
         event_purchase_link = [event.event_purchase_link]
-    return pd.DataFrame(data={'event_name': event_name,
-                              'event_pic': [event.event_pic] * ln,
-                              'event_datetime': event_datetime,
-                              'event_place': [event.event_place] * ln,
-                              'event_price': event_price,
-                              'event_purchase_link': event_purchase_link,
-                              'event_desc': [event.event_desc] * ln,
-                              'event_location': [event.event_location] * ln,
-                              'event_long': [event.event_long] * ln,
-                              'event_lat': [event.event_lat] * ln})
+    for i in range(ln):
+        res.append(
+            {
+                "name": event_name[i],
+                "event_pic": event.event_pic,
+                "event_desc": event.event_desc,
+                "event_place": event.event_place,
+                "event_price": event_price[i],
+                "event_dt": event_datetime[i],
+                "event_purchase_link": event_purchase_link[i],
+                "event_location": event.event_location,
+                "event_long": event.event_long,
+                "event_lat": event.event_lat
+            }
+        )
+    return res
 
 
-def main():
-    results_df = pd.DataFrame(data={'event_name': [],
-                                    'event_pic': [],
-                                    'event_datetime': [],
-                                    'event_place': [],
-                                    'event_price': [],
-                                    'event_purchase_link': [],
-                                    'event_desc': [],
-                                    'event_location': [],
-                                    'event_long': [],
-                                    'event_lat': []})
-    events_count = 0
-    url = 'https://www.ticketpro.by/'
+def get_all_links_for_parsing(url='https://www.ticketpro.by/'):
+    event_links = []
+    print(url)
     try:
         main_links = get_main_links(url)
         event_links = get_event_group_links(main_links)
-        for el in event_links:
-            url_event = f"https://www.ticketpro.by{el.a['href']}"
-            print(f"Event #{events_count}, event url - {url_event}")
-            time.sleep(random.randrange(50, 70))
-            driver.get(url_event)
-            event = Event(driver.page_source)
-            results_df = results_df.append(collect_event_data(event))
-            events_count += 1
-            if events_count % 50 == 0:
-                results_df.to_csv(f"output/ticketpro/ticketpro_data_{events_count}.csv")
     except Exception as e:
         print(e)
-    finally:
-        results_df.to_csv(f"output/ticketpro/ticketpro_data_fin.csv")
-        driver.close()
-        driver.quit()
+    return event_links
 
 
-if __name__ == '__main__':
-    main()
+def parse_event_by_link(event_link):
+    url_event = f"https://www.ticketpro.by{event_link.a['href']}"
+    time.sleep(random.randrange(50, 70))
+    driver.get(url_event)
+    event = Event(driver.page_source)
+    res = collect_event_data(event)
+    return res
+
+
+def close_driver():
+    driver.close()
+    driver.quit()
+
+
+# if __name__ == '__main__':
+#     main()

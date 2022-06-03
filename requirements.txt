@@ -1,0 +1,11 @@
+# Usage: pip install -r requirements.txt
+
+pandas>=1.4.1
+beautifulsoup4>=4.9.3
+selenium>=4.2.0
+tqdm>=4.62.3
+webdriver_manager>=3.4.1
+fake_useragent
+kafka-python>=2.0.2
+
+
