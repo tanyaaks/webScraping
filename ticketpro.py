@@ -1,7 +1,5 @@
 import random
 import time
-
-import pandas as pd
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 from selenium import webdriver
@@ -14,6 +12,8 @@ options = webdriver.ChromeOptions()
 options.add_argument(f"user_agent={useragent.random}")
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--headless")
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
                           options=options)
 
@@ -202,7 +202,6 @@ def get_event_links(url_event_group, pages):
 def get_event_group_links(main_links):
     event_list = []
     for url_event_group in main_links:
-        print(url_event_group)
         time.sleep(random.randrange(40, 60))
         driver.get(url_event_group)
         doc_event_group = BeautifulSoup(driver.page_source, features="html.parser")
@@ -251,7 +250,6 @@ def collect_event_data(event):
 
 def get_all_links_for_parsing(url='https://www.ticketpro.by/'):
     event_links = []
-    print(url)
     try:
         main_links = get_main_links(url)
         event_links = get_event_group_links(main_links)

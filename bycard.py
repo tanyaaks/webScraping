@@ -14,8 +14,11 @@ options = webdriver.ChromeOptions()
 options.add_argument(f"user_agent={useragent.random}")
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--headless")
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),
                           options=options)
+
 
 def error_decorator(func):
     def get_error(*args, **kwargs):
@@ -229,7 +232,6 @@ def get_all_links_for_parsing(url='https://bycard.by/'):
         main_links = get_main_links(url_main)
         print("Main links collected")
         links = get_all_events_links(url_main, main_links)
-        print(links)
     except Exception as e:
         print(e)
     return links
