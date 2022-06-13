@@ -92,7 +92,7 @@ class Event:
             element = driver.find_element(by=By.XPATH, value=checkbox_xpath)
             driver.execute_script("arguments[0].click();", element)
             driver.find_element(by=By.XPATH, value=checkbox_xpath).click()
-            time.sleep(random.randrange(40, 55))
+            time.sleep(random.randrange(15, 25))
             doc = BeautifulSoup(driver.page_source, "html.parser")
             res = doc.find_all(class_='tickets__table')
         except Exception as e:
@@ -194,8 +194,8 @@ def scroll_page_to_update_html():
 
 def get_all_events_links(url, main_links):
     links = []
-    for m_link in main_links[:2]: #main_links[::-1]:
-        time.sleep(random.randrange(35, 45))
+    for m_link in main_links: #main_links[::-1]:
+        time.sleep(random.randrange(15, 20))
         driver.get(m_link)
         doc_group_event = scroll_page_to_update_html()
         tmp = doc_group_event.find_all(class_='capsule')
@@ -239,7 +239,7 @@ def get_all_links_for_parsing(url='https://bycard.by/'):
 
 def parse_event_by_link(link):
     driver.get(link)
-    time.sleep(random.randrange(50, 65))
+    time.sleep(random.randrange(15, 20))
     event = Event(driver.page_source)
     res = collect_event_data(event)
     return res
