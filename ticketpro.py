@@ -15,7 +15,8 @@ options = webdriver.ChromeOptions()
 options.add_argument(f"user_agent={useragent.random}")
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--headless")
-options.add_argument('--window-size=3840,2160')
+# options.add_argument('--window-size=3840,2160')
+options.add_argument('--window-size=7680,4320')
 options.add_argument("--disable-gpu")
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
@@ -327,4 +328,6 @@ def close_driver():
     driver.quit()
 
 # if __name__ == '__main__':
-#     main()
+#     parse_event_by_link('https://www.ticketpro.by/bilety-v-teatr/palnka/')
+#     close_driver()
+    # main()
